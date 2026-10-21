@@ -1,0 +1,25 @@
+{
+  "name": "chatbot-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node --experimental-sqlite --no-warnings=ExperimentalWarning src/index.js",
+    "dev": "node --experimental-sqlite --no-warnings=ExperimentalWarning --watch src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@google/genai": "^2.30.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "firebase-admin": "^14.5.0",
+    "jsonwebtoken": "^9.0.3",
+    "openai": "^7.23.0"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

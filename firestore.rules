@@ -1,0 +1,87 @@
+rules_version = '2';
+
+// Estructura:
+//   users/{uid}                                   perfil: name, username, email, provider, role, disabled, createdAt
+//   users/{uid}/conversations/{cid}               title, createdAt, updatedAt
+//   users/{uid}/conversations/{cid}/messages/{id} role ('user' | 'assistant'), content, createdAt, image?, liked?
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasProfile() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && hasProfile() && profile().role == 'admin' && profile().disabled != true;
+    }
+
+    // El propio usuario, con perfil y sin bloquear
+    function isActiveOwner(uid) {
+      return signedIn() && request.auth.uid == uid && hasProfile() && profile().disabled != true;
+    }
+
+    // Dueña del proyecto: al registrarse con Google su perfil puede crearse como admin
+    function isProjectOwner() {
+      return request.auth.token.email == 'alexalvarado0115@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function validProfile(data) {
+      return data.keys().hasOnly(['name', 'username', 'email', 'provider', 'role', 'disabled', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 80
+        && data.username is string && data.username.size() > 0 && data.username.size() <= 40
+        && data.role in ['user', 'admin']
+        && data.disabled is bool;
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+
+      // Registro propio (rol 'user'), o un admin dando de alta a otra persona
+      allow create: if validProfile(request.resource.data) && (
+        (signedIn() && request.auth.uid == uid && request.resource.data.disabled == false
+          && (request.resource.data.role == 'user' || isProjectOwner()))
+        || isAdmin()
+      );
+
+      // El usuario solo puede cambiar su nombre; el admin también rol y bloqueo (pero no bloquearse a sí mismo)
+      allow update: if validProfile(request.resource.data) && (
+        (isActiveOwner(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'disabled'])
+          && !(uid == request.auth.uid && (request.resource.data.disabled == true || request.resource.data.role != 'admin')))
+      );
+
+      allow delete: if false;
+
+      match /conversations/{cid} {
+        allow read, write: if isActiveOwner(uid);
+
+        match /messages/{mid} {
+          allow read, delete: if isActiveOwner(uid);
+          allow create: if isActiveOwner(uid)
+            && request.resource.data.keys().hasOnly(['role', 'content', 'createdAt', 'image', 'liked'])
+            && request.resource.data.role in ['user', 'assistant']
+            && request.resource.data.content is string
+            && request.resource.data.content.size() <= 100000
+            // Foto opcional, ya comprimida en la app (no hay Cloud Storage en el plan gratuito)
+            && (!('image' in request.resource.data)
+              || (request.resource.data.image is bytes && request.resource.data.image.size() <= 800000));
+          // Lo único que se puede cambiar de un mensaje es el "me gusta"
+          allow update: if isActiveOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liked'])
+            && request.resource.data.liked is bool;
+        }
+      }
+    }
+  }
+}

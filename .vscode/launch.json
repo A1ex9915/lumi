@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Chatbot (adb reverse :8000)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "preLaunchTask": "adb reverse 8000",
+      "toolArgs": ["--dart-define=API_BASE_URL=http://localhost:8000/api"]
+    }
+  ]
+}
