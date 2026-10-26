@@ -21,6 +21,7 @@ Hecho con **Flutter + Firebase + Gemini**. No necesita servidor propio: la app h
 - ❤️ Reacciones, respuestas rápidas y expresiones animadas de Lumi.
 - Historial de conversaciones en la nube (se ve también sin conexión).
 - Inicio de sesión con Google o usuario/contraseña.
+- 💬 **Comentarios de testers**: califica con estrellas, reporta errores o ideas con captura, da 👍 a otros comentarios y recibe respuesta del equipo (en tiempo real).
 - Panel de administración: crear usuarios, cambiar roles y bloquear cuentas.
 - Modo claro/oscuro y diseño adaptado a vertical y horizontal.
 
@@ -43,6 +44,7 @@ lib/
 └── screens/
     ├── login_screen.dart    Login, registro y Google
     ├── chat_screen.dart     Chat, fotos, reacciones, historial
+    ├── feedback_screen.dart Comentarios de testers
     └── users_screen.dart    Administración de usuarios
 assets/lumi/             Logo, ícono e ilustraciones de Lumi
 firestore.rules          Reglas de seguridad de Firestore

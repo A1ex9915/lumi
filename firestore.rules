@@ -83,5 +83,46 @@ service cloud.firestore {
         }
       }
     }
+
+    // Comentarios de testers: todos los usuarios activos los ven y les dan 👍; el admin responde.
+    //   feedback/{id}: uid, name, rating (1-5), type ('bug'|'idea'|'love'), text, image?, createdAt,
+    //                  likedBy [uids], reply?, repliedAt?, resolved
+    function isActiveUser() {
+      return signedIn() && hasProfile() && profile().disabled != true;
+    }
+
+    match /feedback/{id} {
+      allow read: if isActiveUser();
+
+      allow create: if isActiveUser()
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'rating', 'type', 'text', 'image', 'createdAt', 'likedBy', 'resolved'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name == profile().name
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.type in ['bug', 'idea', 'love']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.likedBy == []
+        && request.resource.data.resolved == false
+        && (!('image' in request.resource.data)
+          || (request.resource.data.image is bytes && request.resource.data.image.size() <= 800000));
+
+      allow update: if isActiveUser() && (
+        // 👍: cada quien solo puede ponerse o quitarse a sí mismo
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy'])
+          && request.resource.data.likedBy is list
+          && request.resource.data.likedBy.toSet().difference(resource.data.likedBy.toSet()).hasOnly([request.auth.uid])
+          && resource.data.likedBy.toSet().difference(request.resource.data.likedBy.toSet()).hasOnly([request.auth.uid]))
+        // Admin: responder y marcar como resuelto
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply', 'repliedAt', 'resolved'])
+          && (!('reply' in request.resource.data) || (request.resource.data.reply is string && request.resource.data.reply.size() <= 2000))
+          && request.resource.data.resolved is bool)
+      );
+
+      allow delete: if isActiveUser() && (resource.data.uid == request.auth.uid || isAdmin());
+    }
   }
 }

@@ -89,3 +89,49 @@ class ChatMessage {
     if (image != null) 'image': Blob(image!),
   };
 }
+
+/// Comentario de un tester (colección `feedback`).
+class TesterFeedback {
+  final String id;
+  final String uid;
+  final String name;
+  final int rating; // 1-5
+  final String type; // 'bug' | 'idea' | 'love'
+  final String text;
+  final Uint8List? image;
+  final DateTime? createdAt;
+  final List<String> likedBy;
+  final String? reply;
+  final bool resolved;
+
+  TesterFeedback({
+    required this.id,
+    required this.uid,
+    required this.name,
+    required this.rating,
+    required this.type,
+    required this.text,
+    this.image,
+    this.createdAt,
+    this.likedBy = const [],
+    this.reply,
+    this.resolved = false,
+  });
+
+  factory TesterFeedback.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final j = doc.data()!;
+    return TesterFeedback(
+      id: doc.id,
+      uid: j['uid'] as String,
+      name: j['name'] as String,
+      rating: (j['rating'] as num).toInt(),
+      type: j['type'] as String,
+      text: j['text'] as String,
+      image: (j['image'] as Blob?)?.bytes,
+      createdAt: _date(j['createdAt']),
+      likedBy: List<String>.from(j['likedBy'] as List? ?? const []),
+      reply: j['reply'] as String?,
+      resolved: j['resolved'] as bool? ?? false,
+    );
+  }
+}

@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../api_service.dart';
 import '../models.dart';
 import '../theme.dart';
+import 'feedback_screen.dart';
 import 'users_screen.dart';
 
 /// Sugerencias que se muestran en un chat vacío (las "interacciones" de Lumi); al tocarlas se envían.
@@ -693,6 +694,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final footer = <Widget>[
       const Divider(height: 1),
+      ListTile(
+        dense: compact,
+        leading: const Icon(Icons.rate_review_outlined),
+        title: const Text('Comentarios de testers'),
+        onTap: () {
+          Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackScreen()));
+        },
+      ),
       if (_conversations.isNotEmpty)
         ListTile(
           dense: compact,

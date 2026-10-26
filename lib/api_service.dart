@@ -313,6 +313,43 @@ class ApiService extends ChangeNotifier {
     return t.length > 40 ? '${t.substring(0, 40)}…' : t;
   }
 
+  // ---------- Comentarios de testers ----------
+
+  CollectionReference<Map<String, dynamic>> get _feedback => _db.collection('feedback');
+
+  /// Comentarios en tiempo real (los más recientes primero): un 👍 o una respuesta nueva aparece al instante.
+  Stream<List<TesterFeedback>> feedbackStream() => _feedback
+      .orderBy('createdAt', descending: true)
+      .limit(200)
+      .snapshots()
+      .map((s) => s.docs.where((d) => d.data()['createdAt'] != null).map(TesterFeedback.fromDoc).toList());
+
+  Future<void> sendFeedback({required int rating, required String type, required String text, Uint8List? image}) =>
+      _feedback.add({
+        'uid': _user!.id,
+        'name': _user!.name,
+        'rating': rating,
+        'type': type,
+        'text': text.trim(),
+        if (image != null) 'image': Blob(image),
+        'createdAt': FieldValue.serverTimestamp(),
+        'likedBy': <String>[],
+        'resolved': false,
+      });
+
+  Future<void> setFeedbackLiked(String id, bool liked) => _feedback.doc(id).update({
+    'likedBy': liked ? FieldValue.arrayUnion([_user!.id]) : FieldValue.arrayRemove([_user!.id]),
+  });
+
+  /// Solo admin: responde (texto vacío quita la respuesta) y marca resuelto o pendiente.
+  Future<void> replyFeedback(String id, {required String reply, required bool resolved}) => _feedback.doc(id).update({
+    'reply': reply.trim().isEmpty ? FieldValue.delete() : reply.trim(),
+    'repliedAt': FieldValue.serverTimestamp(),
+    'resolved': resolved,
+  });
+
+  Future<void> deleteFeedback(String id) => _feedback.doc(id).delete();
+
   // ---------- Usuarios (solo admin) ----------
 
   Future<List<User>> getUsers() async {
