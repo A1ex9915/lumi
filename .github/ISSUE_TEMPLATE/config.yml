@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "📲 Descargar Lumi"
+    url: https://github.com/A1ex9915/lumi/releases/latest
+    about: "Descarga la última versión del APK para tu teléfono Android."

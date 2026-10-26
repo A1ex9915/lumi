@@ -1,0 +1,39 @@
+name: "⭐ Dejar tu opinión"
+description: "Califica Lumi y cuéntanos qué te pareció"
+title: "[Opinión] "
+labels: ["feedback"]
+body:
+  - type: dropdown
+    id: calificacion
+    attributes:
+      label: "¿Cuántas estrellas le das a Lumi?"
+      options:
+        - "⭐⭐⭐⭐⭐ ¡Me encantó!"
+        - "⭐⭐⭐⭐ Muy buena"
+        - "⭐⭐⭐ Está bien"
+        - "⭐⭐ Le falta"
+        - "⭐ No me gustó"
+    validations:
+      required: true
+  - type: checkboxes
+    id: favoritos
+    attributes:
+      label: "¿Qué fue lo que más te gustó?"
+      options:
+        - label: "El diseño y Lumi 🤖"
+        - label: "Las respuestas de la IA"
+        - label: "Enviar fotos 📸"
+        - label: "Que escriba palabra por palabra"
+        - label: "Iniciar sesión con Google"
+  - type: textarea
+    id: comentario
+    attributes:
+      label: "Tu comentario"
+      placeholder: "¿Qué te gustó? ¿Qué cambiarías?"
+    validations:
+      required: true
+  - type: input
+    id: telefono
+    attributes:
+      label: "Teléfono (opcional)"
+      placeholder: "Ej.: Samsung Galaxy A56"

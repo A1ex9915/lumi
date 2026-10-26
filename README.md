@@ -14,6 +14,27 @@ Hecho con **Flutter + Firebase + Gemini**. No necesita servidor propio: la app h
 
 > Requiere Android 7.0 o superior y conexión a internet para las respuestas de la IA.
 
+## 💬 Comentarios de testers
+
+¿Ya probaste Lumi? ¡Tu opinión nos ayuda a mejorarla! Elige qué quieres contarnos:
+
+[![Reportar un error](https://img.shields.io/badge/🐞_Reportar_un_error-ff8a65?style=for-the-badge)](https://github.com/A1ex9915/lumi/issues/new?template=1-error.yml)
+[![Proponer una idea](https://img.shields.io/badge/💡_Proponer_una_idea-f5b400?style=for-the-badge)](https://github.com/A1ex9915/lumi/issues/new?template=2-idea.yml)
+[![Dejar tu opinión](https://img.shields.io/badge/⭐_Dejar_tu_opinión-8b6cf6?style=for-the-badge)](https://github.com/A1ex9915/lumi/issues/new?template=3-opinion.yml)
+
+**Así vamos** (se actualiza solo):
+
+[![Errores abiertos](https://img.shields.io/github/issues/A1ex9915/lumi/bug?label=errores%20abiertos&color=ff8a65)](https://github.com/A1ex9915/lumi/issues?q=is%3Aopen+label%3Abug)
+[![Ideas](https://img.shields.io/github/issues/A1ex9915/lumi/enhancement?label=ideas&color=f5b400)](https://github.com/A1ex9915/lumi/issues?q=is%3Aopen+label%3Aenhancement)
+[![Opiniones](https://img.shields.io/github/issues/A1ex9915/lumi/feedback?label=opiniones&color=8b6cf6)](https://github.com/A1ex9915/lumi/issues?q=label%3Afeedback)
+[![Resueltos](https://img.shields.io/github/issues-closed/A1ex9915/lumi?label=resueltos&color=2ea44f)](https://github.com/A1ex9915/lumi/issues?q=is%3Aclosed)
+
+👉 [**Ver todos los comentarios**](https://github.com/A1ex9915/lumi/issues): dale 👍 a los que también te pasen
+para saber qué arreglar primero.
+
+> Para comentar necesitas una cuenta de GitHub (es gratis). También puedes opinar desde la app:
+> menú ☰ → **Comentarios de testers**.
+
 ## ✨ Funciones
 
 - Chat con IA (Gemini) con respuestas que se escriben palabra por palabra, botón para detener y regenerar.

@@ -1,0 +1,63 @@
+name: "🐞 Reportar un error"
+description: "Algo no funciona bien en Lumi"
+title: "[Error] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por probar Lumi! 💜 Cuéntanos qué pasó para poder arreglarlo.
+  - type: textarea
+    id: que-paso
+    attributes:
+      label: "¿Qué pasó?"
+      description: "Describe el error con tus palabras."
+      placeholder: "Ej.: al girar el teléfono el menú se corta y no puedo cerrar sesión."
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: "¿Cómo lo provoco?"
+      description: "Los pasos para que nos pase lo mismo."
+      placeholder: |
+        1. Abro Lumi
+        2. Toco el menú ☰
+        3. Giro el teléfono a horizontal
+    validations:
+      required: false
+  - type: input
+    id: telefono
+    attributes:
+      label: "Teléfono"
+      placeholder: "Ej.: Samsung Galaxy A56 / Xiaomi Redmi Note 14"
+    validations:
+      required: true
+  - type: dropdown
+    id: android
+    attributes:
+      label: "Versión de Android"
+      options:
+        - "Android 16"
+        - "Android 15"
+        - "Android 14"
+        - "Android 13"
+        - "Android 12 o anterior"
+        - "No sé"
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: "Versión de Lumi"
+      options:
+        - "1.1"
+        - "1.0"
+        - "No sé"
+    validations:
+      required: true
+  - type: textarea
+    id: capturas
+    attributes:
+      label: "Capturas de pantalla (opcional)"
+      description: "Arrastra aquí tus capturas o pégalas con Ctrl+V."

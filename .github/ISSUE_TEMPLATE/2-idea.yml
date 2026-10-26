@@ -1,0 +1,34 @@
+name: "💡 Proponer una idea"
+description: "¿Qué te gustaría que Lumi hiciera?"
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Nos encantan las ideas! 💡 Mientras más detalle, mejor.
+  - type: textarea
+    id: idea
+    attributes:
+      label: "Tu idea"
+      placeholder: "Ej.: que Lumi pueda leer en voz alta sus respuestas."
+    validations:
+      required: true
+  - type: textarea
+    id: para-que
+    attributes:
+      label: "¿Para qué te serviría?"
+      placeholder: "Ej.: para escucharlo mientras cocino."
+  - type: dropdown
+    id: importancia
+    attributes:
+      label: "¿Qué tanto la quieres?"
+      options:
+        - "🔥 ¡La necesito!"
+        - "👍 Estaría muy bien"
+        - "🙂 Sería un detalle bonito"
+  - type: textarea
+    id: capturas
+    attributes:
+      label: "Imágenes o ejemplos (opcional)"
+      description: "Arrastra aquí imágenes de apps que lo hagan bien o un dibujo de tu idea."
