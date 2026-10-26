@@ -7,6 +7,9 @@ Hecho con **Flutter + Firebase + Gemini**. No necesita servidor propio: la app h
 
 ## 📲 Instalar en tu teléfono
 
+[![Descargar Lumi para Android](https://img.shields.io/github/v/release/A1ex9915/lumi?label=Descargar%20Lumi&style=for-the-badge&color=8b6cf6&logo=android&logoColor=white)](https://github.com/A1ex9915/lumi/releases/latest/download/lumi.apk)
+[![Descargas](https://img.shields.io/github/downloads/A1ex9915/lumi/total?label=descargas&color=3dd5f0)](https://github.com/A1ex9915/lumi/releases)
+
 1. Descarga **`lumi.apk`** desde la sección [**Releases**](../../releases) de este repositorio.
 2. Ábrelo en tu teléfono Android. Si te lo pide, permite **"Instalar apps de fuentes desconocidas"**
    para tu navegador o administrador de archivos.
