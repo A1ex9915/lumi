@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
+import 'package:firebase_auth/firebase_auth.dart' as fb show User;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'config.dart';
 import 'models.dart';
+import 'validators.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -29,6 +31,10 @@ class ApiService extends ChangeNotifier {
 
   User? get currentUser => _user;
   bool get isLoggedIn => _user != null;
+
+  /// Correo registrado que todavía no se ha verificado (la app muestra la pantalla de verificación).
+  String? _pendingEmail;
+  String? get pendingEmail => _pendingEmail;
 
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
@@ -51,8 +57,15 @@ class ApiService extends ChangeNotifier {
       debugPrint('Firebase no disponible: $e');
       return;
     }
+    // Los correos de verificación de Firebase llegan en español
+    await _auth.setLanguageCode('es');
     // Firebase recuerda la sesión: si ya había alguien dentro, cargamos su perfil
-    if (_auth.currentUser != null) {
+    final current = _auth.currentUser;
+    if (current != null) {
+      if (_needsVerification(current)) {
+        _pendingEmail = current.email;
+        return;
+      }
       try {
         await _loadProfile();
       } catch (_) {
@@ -61,21 +74,70 @@ class ApiService extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String username, String password) async {
-    await _guardAuth(() => _auth.signInWithEmailAndPassword(email: _emailFor(username), password: password));
+  /// Cuentas con correo real que aún no lo verificaron. Las de Google ya vienen verificadas y las de
+  /// usuario (`usuario@chatbot.invalid`, creadas por el admin) no tienen un correo que verificar.
+  bool _needsVerification(fb.User u) {
+    final email = u.email;
+    if (email == null || u.emailVerified) return false;
+    if (email.toLowerCase().endsWith('@$usernameEmailDomain')) return false;
+    return u.providerData.any((p) => p.providerId == 'password');
+  }
+
+  /// Entra con correo (o con usuario, para las cuentas creadas por el admin) y contraseña.
+  Future<void> login(String emailOrUsername, String password) async {
+    final cred = await _guardAuth(
+      () => _auth.signInWithEmailAndPassword(email: _emailFor(emailOrUsername), password: password),
+    );
+    if (_needsVerification(cred.user!)) {
+      _pendingEmail = cred.user!.email;
+      notifyListeners();
+      return;
+    }
     await _loadProfile();
   }
 
-  Future<void> register(String name, String username, String password) async {
-    final clean = username.trim().toLowerCase();
-    if (!RegExp(r'^[a-z0-9._-]{3,30}$').hasMatch(clean)) {
-      throw ApiException('El usuario debe tener 3-30 caracteres: letras, números, punto, guion o guion bajo');
-    }
-    final cred = await _guardAuth(
-      () => _auth.createUserWithEmailAndPassword(email: _emailFor(clean), password: password),
-    );
-    await _users.doc(cred.user!.uid).set(_newProfile(name: name.trim(), username: clean, provider: 'password'));
+  /// Registro manual con correo: crea la cuenta y envía el correo de verificación.
+  /// La cuenta no se puede usar hasta que la persona toque el enlace del correo.
+  Future<void> registerWithEmail(String name, String email, String password) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final error = validateEmail(cleanEmail) ?? validatePassword(password);
+    if (error != null) throw ApiException(error);
+
+    final cred = await _guardAuth(() => _auth.createUserWithEmailAndPassword(email: cleanEmail, password: password));
+    final local = cleanEmail.split('@').first;
+    await _users
+        .doc(cred.user!.uid)
+        .set(
+          _newProfile(
+            name: name.trim(),
+            username: local.length > 40 ? local.substring(0, 40) : local,
+            email: cleanEmail,
+            provider: 'password',
+          ),
+        );
+    await cred.user!.sendEmailVerification();
+    _pendingEmail = cleanEmail;
+    notifyListeners();
+  }
+
+  /// Comprueba si ya se tocó el enlace del correo. Si sí, entra a la app.
+  Future<bool> checkEmailVerified() async {
+    final u = _auth.currentUser;
+    if (u == null) return false;
+    await u.reload();
+    final fresh = _auth.currentUser!;
+    if (!fresh.emailVerified) return false;
+    // Token nuevo para que las reglas de Firestore vean el correo como verificado
+    await fresh.getIdToken(true);
+    _pendingEmail = null;
     await _loadProfile();
+    return true;
+  }
+
+  Future<void> resendVerificationEmail() async {
+    final u = _auth.currentUser;
+    if (u == null) return;
+    await _guardAuth(() => u.sendEmailVerification());
   }
 
   /// Inicia sesión con Google. Devuelve false si el usuario cerró el selector de cuentas.
@@ -113,6 +175,7 @@ class ApiService extends ChangeNotifier {
 
   Future<void> logout() async {
     _user = null;
+    _pendingEmail = null;
     notifyListeners();
     await _auth.signOut();
     if (_googleInitialized) {
@@ -164,9 +227,10 @@ class ApiService extends ChangeNotifier {
       return await action();
     } on FirebaseAuthException catch (e) {
       throw ApiException(switch (e.code) {
-        'invalid-credential' || 'wrong-password' || 'user-not-found' || 'invalid-email' => 'Credenciales incorrectas',
-        'email-already-in-use' => 'El usuario ya existe',
-        'weak-password' => 'La contraseña debe tener al menos 6 caracteres',
+        'invalid-credential' || 'wrong-password' || 'user-not-found' => 'Correo, usuario o contraseña incorrectos',
+        'invalid-email' => 'Ese correo no es válido',
+        'email-already-in-use' => 'Ya existe una cuenta con ese correo o usuario. Inicia sesión.',
+        'weak-password' => 'La contraseña es demasiado débil',
         'user-disabled' => 'Tu cuenta está deshabilitada',
         'too-many-requests' => 'Demasiados intentos. Espera un momento.',
         'network-request-failed' => 'Sin conexión a internet',

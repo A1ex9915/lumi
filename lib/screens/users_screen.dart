@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api_service.dart';
 import '../models.dart';
+import '../validators.dart';
 
 /// CRUD de usuarios (solo administradores).
 class UsersScreen extends StatefulWidget {
@@ -217,12 +218,12 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                 TextFormField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Contraseña'),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Requerida';
-                    if (v.length < 6) return 'Mínimo 6 caracteres';
-                    return null;
-                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña',
+                    helperText: 'Mínimo 8 caracteres y un carácter especial',
+                  ),
+                  // Misma regla que el registro: 8+ caracteres y un carácter especial
+                  validator: validatePassword,
                 ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

@@ -50,7 +50,7 @@ Responde tus dudas · Te da ideas · Analiza tus fotos · Te recuerda cuidarte
 
 | 1️⃣ Descarga | 2️⃣ Instala | 3️⃣ ¡Listo! |
 |:---:|:---:|:---:|
-| Toca el botón morado **Descargar para Android** de arriba | Abre `lumi.apk` y permite **"Instalar apps de fuentes desconocidas"** | Entra con **Continuar con Google** o crea tu cuenta |
+| Toca el botón morado **Descargar para Android** de arriba | Abre `lumi.apk` y permite **"Instalar apps de fuentes desconocidas"** | Entra con **Continuar con Google** o regístrate con tu correo y verifícalo |
 
 > 💡 ¿Ya tienes Lumi? Instala la nueva versión encima: **no pierdes tus chats**.
 > Todas las versiones están en [**Releases**](https://github.com/A1ex9915/lumi/releases).
@@ -100,7 +100,7 @@ Responde tus dudas · Te da ideas · Analiza tus fotos · Te recuerda cuidarte
 | 📸 | Envía fotos y Lumi te explica qué ve |
 | ❤️ | Reacciones, **respuestas rápidas** ("Más simple", "Dame un ejemplo"…) y expresiones animadas |
 | ☁️ | Historial de conversaciones en la nube, visible también sin conexión |
-| 🔐 | Inicio de sesión con **Google** o con usuario y contraseña |
+| 🔐 | Inicio de sesión con **Google** o **registro con correo**: se verifica el correo con un enlace y la contraseña debe tener 8+ caracteres y un carácter especial |
 | 💬 | **Comentarios de testers** dentro de la app, con estrellas, capturas y 👍 en tiempo real |
 | 👩‍💼 | Panel de administración: crear usuarios, cambiar roles y bloquear cuentas |
 
@@ -143,7 +143,8 @@ lib/
 ├── api_service.dart       Firebase Auth + Firestore + Gemini y estado de la sesión
 ├── models.dart
 └── screens/
-    ├── login_screen.dart      Login, registro y Google
+    ├── login_screen.dart      Login, registro con correo y Google
+    ├── verify_email_screen.dart  Verificación del correo
     ├── chat_screen.dart       Chat, fotos, reacciones, historial
     ├── feedback_screen.dart   Comentarios de testers
     └── users_screen.dart      Administración de usuarios

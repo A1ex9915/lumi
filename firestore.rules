@@ -19,13 +19,21 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    function isAdmin() {
-      return signedIn() && hasProfile() && profile().role == 'admin' && profile().disabled != true;
+    // Correo verificado. Excepciones: cuentas de usuario creadas por el admin (usuario@chatbot.invalid),
+    // que no tienen un correo real que verificar. Las de Google ya llegan verificadas.
+    function emailOk() {
+      return !('email' in request.auth.token)
+        || request.auth.token.email.matches('.*@chatbot[.]invalid')
+        || request.auth.token.email_verified == true;
     }
 
-    // El propio usuario, con perfil y sin bloquear
+    function isAdmin() {
+      return signedIn() && emailOk() && hasProfile() && profile().role == 'admin' && profile().disabled != true;
+    }
+
+    // El propio usuario, con correo verificado, con perfil y sin bloquear
     function isActiveOwner(uid) {
-      return signedIn() && request.auth.uid == uid && hasProfile() && profile().disabled != true;
+      return signedIn() && emailOk() && request.auth.uid == uid && hasProfile() && profile().disabled != true;
     }
 
     // Dueña del proyecto: al registrarse con Google su perfil puede crearse como admin
@@ -88,7 +96,7 @@ service cloud.firestore {
     //   feedback/{id}: uid, name, rating (1-5), type ('bug'|'idea'|'love'), text, image?, createdAt,
     //                  likedBy [uids], reply?, repliedAt?, resolved
     function isActiveUser() {
-      return signedIn() && hasProfile() && profile().disabled != true;
+      return signedIn() && emailOk() && hasProfile() && profile().disabled != true;
     }
 
     match /feedback/{id} {
