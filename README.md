@@ -53,7 +53,7 @@ Responde tus dudas · Te da ideas · Analiza tus fotos · Te recuerda cuidarte
 | Toca el botón morado **Descargar para Android** de arriba | Abre `lumi.apk` y permite **"Instalar apps de fuentes desconocidas"** | Entra con **Continuar con Google** o regístrate con tu correo y verifícalo |
 
 > 💡 ¿Ya tienes Lumi? Instala la nueva versión encima: **no pierdes tus chats**.
-> Todas las versiones están en [**Releases**](https://github.com/A1ex9915/lumi/releases).
+> Todas las versiones están en [**Releases**](https://github.com/A1ex9915/lumi/releases) y lo que cambió en cada una, en el [**CHANGELOG**](CHANGELOG.md).
 
 ---
 
@@ -188,6 +188,25 @@ Requisitos: [Flutter](https://flutter.dev) y el [CLI de Firebase](https://fireba
    ```
    y compila con `flutter build apk --release`. Sin `key.properties` se firma con la llave de depuración.
    Para que **Continuar con Google** funcione, registra en Firebase la huella SHA-1 de la llave con la que firmas.
+
+</details>
+
+<details>
+<summary><b>🌿 Ramas y versiones (GitFlow)</b></summary>
+
+<br>
+
+| Rama | Para qué sirve | Se une a |
+|---|---|---|
+| `main` | Versión estable publicada; cada entrega lleva etiqueta (`v1.2.0`) | — |
+| `develop` | Integración de las funcionalidades terminadas | `release/*` |
+| `feature/<nombre>` | Una funcionalidad por rama (ej. `feature/registro-correo`) | `develop` |
+| `release/<versión>` | Pruebas finales antes de publicar un APK | `main` y `develop` |
+| `hotfix/<nombre>` | Corrección urgente sobre lo publicado | `main` y `develop` |
+
+Cada cambio entra por un **Pull Request**. Los commits siguen el formato convencional
+(`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`) y las versiones usan SemVer
+`MAYOR.MENOR.PARCHE+BUILD` (en `pubspec.yaml`). El detalle de cada versión está en el [**CHANGELOG**](CHANGELOG.md).
 
 </details>
 
