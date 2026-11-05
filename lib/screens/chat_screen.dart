@@ -33,6 +33,13 @@ String _dateGroup(DateTime? d) {
   return 'Anteriores';
 }
 
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour >= 6 && hour < 12) return 'Buenos días';
+  if (hour >= 12 && hour < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
 /// Pantalla principal: chat con la IA + historial de conversaciones en el menú lateral.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -46,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
   final _scroll = ScrollController();
+  final _search = TextEditingController(); // buscador del historial
 
   List<Conversation> _conversations = [];
   Conversation? _current;
@@ -83,6 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadConversations();
     _input.addListener(() => setState(() {}));
     _inputFocus.addListener(() => setState(() {}));
+    _search.addListener(() => setState(() {}));
     _scroll.addListener(_onScroll);
   }
 
@@ -94,6 +103,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _input.dispose();
     _inputFocus.dispose();
     _scroll.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -473,7 +483,37 @@ class _ChatScreenState extends State<ChatScreen> {
         false;
   }
 
+  Future<void> _toggleFavorite(Conversation c) async {
+    HapticFeedback.mediumImpact();
+    setState(() => c.favorite = !c.favorite);
+    if (c.favorite) _showReaction(LumiImages.amor);
+    try {
+      await _api.setFavorite(c.id, c.favorite);
+    } catch (e) {
+      if (mounted) setState(() => c.favorite = !c.favorite);
+      _showError(e);
+    }
+  }
+
+  Future<void> _renameConversation(Conversation c) async {
+    final title = await showDialog<String>(
+      context: context,
+      builder: (_) => _RenameDialog(title: c.title),
+    );
+    if (title == null || title == c.title) return;
+    try {
+      await _api.renameConversation(c.id, title);
+      await _loadConversations();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
   Future<void> _deleteConversation(Conversation c) async {
+    if (c.favorite) {
+      _showError('Esta conversación está en favoritos. Quítala de favoritos para poder borrarla.');
+      return;
+    }
     if (!await _confirm('Borrar conversación', '¿Borrar "${c.title}"? Esta acción no se puede deshacer.')) return;
     try {
       await _api.deleteConversation(c.id);
@@ -485,10 +525,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _deleteAll() async {
-    if (!await _confirm('Borrar todo', '¿Borrar todas tus conversaciones?')) return;
+    final hasFavorites = _conversations.any((c) => c.favorite);
+    final message = hasFavorites
+        ? '¿Borrar tus conversaciones? Las que están en favoritos se conservan.'
+        : '¿Borrar todas tus conversaciones?';
+    if (!await _confirm('Borrar todo', message)) return;
     try {
       await _api.deleteAllConversations();
-      _newChat();
+      if (_current?.favorite != true) _newChat();
       await _loadConversations();
     } catch (e) {
       _showError(e);
@@ -519,6 +563,9 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(tooltip: 'Nuevo chat', icon: const Icon(Icons.edit_square), onPressed: _newChat),
+          // Solo cuando ya está guardada (tras la primera respuesta)
+          if (_current != null && _conversations.any((c) => c.id == _current!.id))
+            _FavoriteButton(favorite: _current!.favorite, onPressed: () => _toggleFavorite(_current!)),
           if (_current != null)
             IconButton(
               tooltip: 'Borrar conversación',
@@ -528,6 +575,10 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       drawer: _buildDrawer(),
+      // Al cerrar el menú, la búsqueda vuelve a empezar
+      onDrawerChanged: (open) {
+        if (!open) _search.clear();
+      },
       // En horizontal respeta los bordes con cámara/notch a los lados
       body: SafeArea(
         top: false,
@@ -636,6 +687,26 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ),
+      if (_conversations.isNotEmpty)
+        Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, 12, compact ? 4 : 8),
+          child: TextField(
+            controller: _search,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Buscar conversación…',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              suffixIcon: _search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Limpiar búsqueda',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: _search.clear,
+                    ),
+            ),
+          ),
+        ),
     ];
 
     final empty = Padding(
@@ -645,51 +716,73 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           _Sticker(LumiImages.dormido, height: compact ? 60 : 90),
           const SizedBox(height: 8),
-          Text('Aún no hay conversaciones', style: TextStyle(color: scheme.onSurfaceVariant)),
+          Text(
+            _conversations.isEmpty ? 'Aún no hay conversaciones' : 'Sin resultados',
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
         ],
       ),
     );
 
-    // Conversaciones con encabezados de fecha intercalados
-    final conversations = <Widget>[];
+    Widget sectionTitle(String title) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      child: Text(
+        title,
+        style: text.labelMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600),
+      ),
+    );
+
+    Widget tile(Conversation c) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.only(left: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        selected: c.id == _current?.id,
+        selectedTileColor: scheme.secondaryContainer,
+        selectedColor: scheme.onSecondaryContainer,
+        leading: const Icon(Icons.chat_bubble_outline, size: 20),
+        title: Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _FavoriteButton(favorite: c.favorite, size: 20, onPressed: () => _toggleFavorite(c)),
+            PopupMenuButton<String>(
+              tooltip: 'Más opciones',
+              icon: const Icon(Icons.more_vert_rounded, size: 20),
+              onSelected: (action) => action == 'rename' ? _renameConversation(c) : _deleteConversation(c),
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'rename', child: Text('Renombrar')),
+                PopupMenuItem(
+                  value: 'delete',
+                  enabled: !c.favorite,
+                  child: Text(c.favorite ? 'Borrar (está en favoritos)' : 'Borrar'),
+                ),
+              ],
+            ),
+          ],
+        ),
+        onTap: () {
+          Navigator.pop(context);
+          _openConversation(c);
+        },
+      ),
+    );
+
+    // Primero las favoritas; después el resto con encabezados de fecha intercalados
+    final split = splitConversations(_conversations, query: _search.text);
+    final conversations = <Widget>[
+      if (split.favorites.isNotEmpty) sectionTitle('⭐ Favoritos'),
+      ...split.favorites.map(tile),
+    ];
     String? lastGroup;
-    for (final c in _conversations) {
+    for (final c in split.others) {
       final g = _dateGroup(c.updatedAt);
       if (g != lastGroup) {
         lastGroup = g;
-        conversations.add(
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-            child: Text(
-              g,
-              style: text.labelMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600),
-            ),
-          ),
-        );
+        conversations.add(sectionTitle(g));
       }
-      conversations.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: ListTile(
-            dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            selected: c.id == _current?.id,
-            selectedTileColor: scheme.secondaryContainer,
-            selectedColor: scheme.onSecondaryContainer,
-            leading: const Icon(Icons.chat_bubble_outline, size: 20),
-            title: Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              tooltip: 'Borrar',
-              onPressed: () => _deleteConversation(c),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              _openConversation(c);
-            },
-          ),
-        ),
-      );
+      conversations.add(tile(c));
     }
 
     final footer = <Widget>[
@@ -703,11 +796,12 @@ class _ChatScreenState extends State<ChatScreen> {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackScreen()));
         },
       ),
-      if (_conversations.isNotEmpty)
+      // Las favoritas no se borran: solo aparece si hay algo que borrar
+      if (_conversations.any((c) => !c.favorite))
         ListTile(
           dense: compact,
           leading: const Icon(Icons.delete_sweep_outlined),
-          title: const Text('Borrar todas las conversaciones'),
+          title: Text(_conversations.any((c) => c.favorite) ? 'Borrar todas menos favoritos' : 'Borrar todas las conversaciones'),
           onTap: () {
             Navigator.pop(context);
             _deleteAll();
@@ -907,6 +1001,80 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
+/// Estrella para poner o quitar una conversación de favoritos.
+class _FavoriteButton extends StatelessWidget {
+  final bool favorite;
+  final double? size;
+  final VoidCallback onPressed;
+  const _FavoriteButton({required this.favorite, required this.onPressed, this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: favorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+      visualDensity: VisualDensity.compact,
+      iconSize: size,
+      onPressed: onPressed,
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: (child, a) => ScaleTransition(
+          scale: CurvedAnimation(parent: a, curve: Curves.elasticOut),
+          child: child,
+        ),
+        child: Icon(
+          favorite ? Icons.star_rounded : Icons.star_border_rounded,
+          key: ValueKey(favorite),
+          color: favorite ? Colors.amber : null,
+        ),
+      ),
+    );
+  }
+}
+
+/// Pide el nuevo título de una conversación y lo devuelve al cerrarse.
+class _RenameDialog extends StatefulWidget {
+  final String title;
+  const _RenameDialog({required this.title});
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final _controller = TextEditingController(text: widget.title);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = _controller.text.trim();
+    if (title.isNotEmpty) Navigator.pop(context, title);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Renombrar conversación'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 60,
+        textCapitalization: TextCapitalization.sentences,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _save(),
+        decoration: const InputDecoration(labelText: 'Título'),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(onPressed: _save, child: const Text('Guardar')),
+      ],
+    );
+  }
+}
+
 /// Botón grande de "Cámara" / "Galería" en el menú de adjuntar.
 class _AttachOption extends StatelessWidget {
   final IconData icon;
@@ -1020,7 +1188,7 @@ class _EmptyState extends StatelessWidget {
                 child: const _Sticker(LumiImages.saluda, height: 150),
               ),
               const SizedBox(height: 12),
-              Text('¡Hola, $name!', style: text.headlineSmall, textAlign: TextAlign.center),
+              Text('¡${_greeting()}, $name!', style: text.headlineSmall, textAlign: TextAlign.center),
               const SizedBox(height: 6),
               Text(
                 '¡Soy Lumi, tu asistente! ¿En qué te ayudo hoy?',

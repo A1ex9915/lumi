@@ -45,12 +45,33 @@ class Conversation {
   final String title;
   final DateTime? updatedAt;
 
-  Conversation({required this.id, required this.title, this.updatedAt});
+  /// Las favoritas salen primero en el historial y no se pueden borrar.
+  bool favorite;
+
+  Conversation({required this.id, required this.title, this.updatedAt, this.favorite = false});
 
   factory Conversation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final j = doc.data()!;
-    return Conversation(id: doc.id, title: j['title'] as String, updatedAt: _date(j['updatedAt']));
+    return Conversation(
+      id: doc.id,
+      title: j['title'] as String,
+      updatedAt: _date(j['updatedAt']),
+      favorite: j['favorite'] as bool? ?? false,
+    );
   }
+}
+
+/// Filtra por título (sin distinguir mayúsculas) y separa las favoritas del resto, conservando el orden.
+({List<Conversation> favorites, List<Conversation> others}) splitConversations(
+  List<Conversation> conversations, {
+  String query = '',
+}) {
+  final q = query.trim().toLowerCase();
+  final matches = conversations.where((c) => c.title.toLowerCase().contains(q));
+  return (
+    favorites: matches.where((c) => c.favorite).toList(),
+    others: matches.where((c) => !c.favorite).toList(),
+  );
 }
 
 class ChatMessage {

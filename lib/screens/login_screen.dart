@@ -15,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
+  final _username = TextEditingController();
   final _email = TextEditingController(); // al entrar: correo o usuario
   final _password = TextEditingController();
   final _confirm = TextEditingController();
@@ -35,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _name.dispose();
+    _username.dispose();
     _email.dispose();
     _password.dispose();
     _confirm.dispose();
@@ -59,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final api = ApiService.instance;
       if (_registerMode) {
-        await api.registerWithEmail(_name.text.trim(), _email.text.trim(), _password.text);
+        await api.registerWithEmail(_name.text.trim(), _username.text.trim(), _email.text.trim(), _password.text);
       } else {
         await api.login(_email.text.trim(), _password.text);
       }
@@ -128,10 +130,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _name,
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
+                        maxLength: nameMaxLength,
                         decoration: const InputDecoration(labelText: 'Nombre', prefixIcon: Icon(Icons.badge_outlined)),
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Ingresa tu nombre' : null,
+                        validator: validateName,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _username,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.next,
+                        maxLength: usernameMaxLength,
+                        decoration: const InputDecoration(
+                          labelText: 'Usuario',
+                          prefixIcon: Icon(Icons.alternate_email),
+                          helperText: 'Es tu nombre visible; para entrar usarás tu correo',
+                        ),
+                        validator: validateUsername,
+                      ),
+                      const SizedBox(height: 8),
                     ],
                     TextFormField(
                       controller: _email,
@@ -245,7 +261,8 @@ class _PasswordChecklist extends StatelessWidget {
   Widget build(BuildContext context) {
     final rules = [
       ('Al menos $passwordMinLength caracteres', hasMinLength(password)),
-      ('Al menos un carácter especial (! @ # \$ % & * …)', hasSpecialChar(password)),
+      ('Al menos una mayúscula', hasUppercase(password)),
+      ('Al menos un número', hasDigit(password)),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

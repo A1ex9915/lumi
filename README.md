@@ -100,7 +100,7 @@ Responde tus dudas · Te da ideas · Analiza tus fotos · Te recuerda cuidarte
 | 📸 | Envía fotos y Lumi te explica qué ve |
 | ❤️ | Reacciones, **respuestas rápidas** ("Más simple", "Dame un ejemplo"…) y expresiones animadas |
 | ☁️ | Historial de conversaciones en la nube, visible también sin conexión |
-| 🔐 | Inicio de sesión con **Google** o **registro con correo**: se verifica el correo con un enlace y la contraseña debe tener 8+ caracteres y un carácter especial |
+| 🔐 | Inicio de sesión con **Google** o **registro con correo**: se verifica el correo con un enlace y la contraseña debe tener 16+ caracteres, una mayúscula y un número |
 | 💬 | **Comentarios de testers** dentro de la app, con estrellas, capturas y 👍 en tiempo real |
 | 👩‍💼 | Panel de administración: crear usuarios, cambiar roles y bloquear cuentas |
 
