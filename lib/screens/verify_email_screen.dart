@@ -17,14 +17,17 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> with WidgetsBindi
   final _api = ApiService.instance;
   bool _checking = false;
   String? _message;
-  int _cooldown = 60; // segundos para poder reenviar (el primer correo se acaba de enviar)
+  int _cooldown = 0; // segundos que faltan para poder reenviar
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _startCooldown();
+    // Solo se espera si el correo se acaba de enviar; al volver a entrar se puede reenviar enseguida
+    if (_api.verificationEmailSent) _startCooldown();
+    final error = _api.verificationEmailError;
+    if (error != null) _message = 'No pudimos enviar el correo: $error Pulsa "Reenviar correo" para intentarlo de nuevo.';
   }
 
   @override

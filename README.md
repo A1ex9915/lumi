@@ -11,8 +11,8 @@ Responde tus dudas · Te da ideas · Analiza tus fotos · Te recuerda cuidarte
 <a href="https://github.com/A1ex9915/lumi/releases/latest/download/lumi.apk">
   <img src="https://img.shields.io/github/v/release/A1ex9915/lumi?label=Descargar%20para%20Android&style=for-the-badge&color=8b6cf6&logo=android&logoColor=white" alt="Descargar Lumi para Android">
 </a>
-<a href="https://github.com/A1ex9915/lumi/releases/tag/v1.3.0-prueba">
-  <img src="https://img.shields.io/badge/Versi%C3%B3n%20de%20prueba-v1.3.0-f59e0b?style=for-the-badge&logo=android&logoColor=white" alt="Versión de prueba 1.3.0">
+<a href="https://github.com/A1ex9915/lumi/releases/tag/v1.3.1-prueba">
+  <img src="https://img.shields.io/badge/Versi%C3%B3n%20de%20prueba-v1.3.1-f59e0b?style=for-the-badge&logo=android&logoColor=white" alt="Versión de prueba 1.3.1">
 </a>
 
 <sub>La versión de prueba no se instala encima de la estable: hay que desinstalar Lumi primero. Tus chats se conservan.</sub>

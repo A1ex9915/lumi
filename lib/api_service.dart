@@ -36,6 +36,14 @@ class ApiService extends ChangeNotifier {
   String? _pendingEmail;
   String? get pendingEmail => _pendingEmail;
 
+  /// Si el correo de verificación se acaba de enviar en el registro (para esperar antes de reenviarlo).
+  bool _verificationEmailSent = false;
+  bool get verificationEmailSent => _verificationEmailSent;
+
+  /// Por qué falló el envío del correo durante el registro, para mostrarlo en la pantalla de verificación.
+  String? _verificationEmailError;
+  String? get verificationEmailError => _verificationEmailError;
+
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
   CollectionReference<Map<String, dynamic>> get _users => _db.collection('users');
@@ -122,11 +130,12 @@ class ApiService extends ChangeNotifier {
       await cred.user!.delete();
       throw ApiException('No se pudo crear tu cuenta. Revisa tu conexión e inténtalo de nuevo.');
     }
-    // Si este envío falla, la pantalla de verificación permite reenviar el correo
+    // Si este envío falla, la pantalla de verificación muestra el error y permite reenviar el correo
     try {
-      await cred.user!.sendEmailVerification();
-    } on FirebaseAuthException catch (e) {
-      debugPrint('No se pudo enviar el correo de verificación: ${e.message}');
+      await _guardAuth(() => cred.user!.sendEmailVerification());
+      _verificationEmailSent = true;
+    } on ApiException catch (e) {
+      _verificationEmailError = e.message;
     }
     _pendingEmail = cleanEmail;
     notifyListeners();
@@ -141,7 +150,7 @@ class ApiService extends ChangeNotifier {
     if (!fresh.emailVerified) return false;
     // Token nuevo para que las reglas de Firestore vean el correo como verificado
     await fresh.getIdToken(true);
-    _pendingEmail = null;
+    _clearPendingVerification();
     await _loadProfile();
     return true;
   }
@@ -188,7 +197,7 @@ class ApiService extends ChangeNotifier {
 
   Future<void> logout() async {
     _user = null;
-    _pendingEmail = null;
+    _clearPendingVerification();
     notifyListeners();
     await _auth.signOut();
     if (_googleInitialized) {
@@ -196,6 +205,12 @@ class ApiService extends ChangeNotifier {
         await GoogleSignIn.instance.signOut();
       } catch (_) {}
     }
+  }
+
+  void _clearPendingVerification() {
+    _pendingEmail = null;
+    _verificationEmailSent = false;
+    _verificationEmailError = null;
   }
 
   Future<void> _loadProfile() async {
