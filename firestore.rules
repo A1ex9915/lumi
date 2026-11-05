@@ -2,7 +2,7 @@ rules_version = '2';
 
 // Estructura:
 //   users/{uid}                                   perfil: name, username, email, provider, role, disabled, createdAt
-//   users/{uid}/conversations/{cid}               title, createdAt, updatedAt
+//   users/{uid}/conversations/{cid}               title, createdAt, updatedAt, favorite?
 //   users/{uid}/conversations/{cid}/messages/{id} role ('user' | 'assistant'), content, createdAt, image?, liked?
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -44,10 +44,20 @@ service cloud.firestore {
 
     function validProfile(data) {
       return data.keys().hasOnly(['name', 'username', 'email', 'provider', 'role', 'disabled', 'createdAt'])
-        && data.name is string && data.name.size() > 0 && data.name.size() <= 80
-        && data.username is string && data.username.size() > 0 && data.username.size() <= 40
+        && data.name is string && data.name.size() > 0
+        && data.username is string && data.username.size() > 0
         && data.role in ['user', 'admin']
         && data.disabled is bool;
+    }
+
+    // Límites para perfiles nuevos. Al editar solo se comprueba el nombre si cambia,
+    // para que las cuentas antiguas con textos más largos se puedan seguir administrando.
+    function withinLimits(data) {
+      return data.name.size() <= 60 && data.username.size() <= 30;
+    }
+
+    function nameChangeOk() {
+      return request.resource.data.name == resource.data.name || request.resource.data.name.size() <= 60;
     }
 
     match /users/{uid} {
@@ -55,14 +65,14 @@ service cloud.firestore {
       allow list: if isAdmin();
 
       // Registro propio (rol 'user'), o un admin dando de alta a otra persona
-      allow create: if validProfile(request.resource.data) && (
+      allow create: if validProfile(request.resource.data) && withinLimits(request.resource.data) && (
         (signedIn() && request.auth.uid == uid && request.resource.data.disabled == false
           && (request.resource.data.role == 'user' || isProjectOwner()))
         || isAdmin()
       );
 
       // El usuario solo puede cambiar su nombre; el admin también rol y bloqueo (pero no bloquearse a sí mismo)
-      allow update: if validProfile(request.resource.data) && (
+      allow update: if validProfile(request.resource.data) && nameChangeOk() && (
         (isActiveOwner(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'disabled'])
@@ -72,7 +82,9 @@ service cloud.firestore {
       allow delete: if false;
 
       match /conversations/{cid} {
-        allow read, write: if isActiveOwner(uid);
+        allow read, create, update: if isActiveOwner(uid);
+        // Una favorita no se puede borrar: primero hay que quitarla de favoritos
+        allow delete: if isActiveOwner(uid) && (resource == null || resource.data.get('favorite', false) != true);
 
         match /messages/{mid} {
           allow read, delete: if isActiveOwner(uid);

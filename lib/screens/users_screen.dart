@@ -203,16 +203,19 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             children: [
               TextFormField(
                 controller: _name,
+                maxLength: nameMaxLength,
                 decoration: const InputDecoration(labelText: 'Nombre'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+                // Una cuenta antigua con un nombre más largo se puede editar sin cambiárselo
+                validator: (v) => v?.trim() == widget.user?.name ? null : validateName(v),
               ),
               // El usuario y la contraseña solo se eligen al crear la cuenta
               TextFormField(
                 controller: _username,
                 enabled: !_isEdit,
                 autocorrect: false,
+                maxLength: _isEdit ? null : usernameMaxLength,
                 decoration: const InputDecoration(labelText: 'Usuario'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+                validator: _isEdit ? null : validateUsername,
               ),
               if (!_isEdit)
                 TextFormField(
@@ -220,9 +223,10 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: 'Contraseña',
-                    helperText: 'Mínimo 8 caracteres y un carácter especial',
+                    helperText: 'Mínimo $passwordMinLength caracteres, una mayúscula y un número',
+                    helperMaxLines: 2,
                   ),
-                  // Misma regla que el registro: 8+ caracteres y un carácter especial
+                  // Misma regla que el registro
                   validator: validatePassword,
                 ),
               const SizedBox(height: 16),

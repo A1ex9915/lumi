@@ -98,24 +98,36 @@ class ApiService extends ChangeNotifier {
 
   /// Registro manual con correo: crea la cuenta y envía el correo de verificación.
   /// La cuenta no se puede usar hasta que la persona toque el enlace del correo.
-  Future<void> registerWithEmail(String name, String email, String password) async {
+  Future<void> registerWithEmail(String name, String username, String email, String password) async {
     final cleanEmail = email.trim().toLowerCase();
-    final error = validateEmail(cleanEmail) ?? validatePassword(password);
+    final error =
+        validateName(name) ?? validateUsername(username) ?? validateEmail(cleanEmail) ?? validatePassword(password);
     if (error != null) throw ApiException(error);
 
     final cred = await _guardAuth(() => _auth.createUserWithEmailAndPassword(email: cleanEmail, password: password));
-    final local = cleanEmail.split('@').first;
-    await _users
-        .doc(cred.user!.uid)
-        .set(
-          _newProfile(
-            name: name.trim(),
-            username: local.length > 40 ? local.substring(0, 40) : local,
-            email: cleanEmail,
-            provider: 'password',
-          ),
-        );
-    await cred.user!.sendEmailVerification();
+    try {
+      await _users
+          .doc(cred.user!.uid)
+          .set(
+            _newProfile(
+              name: name.trim(),
+              username: username.trim().toLowerCase(),
+              email: cleanEmail,
+              provider: 'password',
+            ),
+          );
+    } on FirebaseException catch (e) {
+      // Sin perfil la cuenta no sirve: se quita para que el correo se pueda volver a registrar
+      debugPrint('No se pudo crear el perfil: ${e.message}');
+      await cred.user!.delete();
+      throw ApiException('No se pudo crear tu cuenta. Revisa tu conexión e inténtalo de nuevo.');
+    }
+    // Si este envío falla, la pantalla de verificación permite reenviar el correo
+    try {
+      await cred.user!.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('No se pudo enviar el correo de verificación: ${e.message}');
+    }
     _pendingEmail = cleanEmail;
     notifyListeners();
   }
@@ -157,8 +169,9 @@ class ApiService extends ChangeNotifier {
         final email = result.user!.email;
         await ref.set(
           _newProfile(
-            name: result.user!.displayName ?? email?.split('@').first ?? 'Usuario',
-            username: (email?.split('@').first ?? 'usuario').toLowerCase(),
+            // Google puede traer textos más largos que los límites del perfil
+            name: _clip(result.user!.displayName ?? email?.split('@').first ?? 'Usuario', nameMaxLength),
+            username: _clip((email?.split('@').first ?? 'usuario').toLowerCase(), usernameMaxLength),
             email: email,
             provider: 'google',
             role: ownerEmails.contains(email) ? 'admin' : 'user',
@@ -199,6 +212,9 @@ class ApiService extends ChangeNotifier {
     _user = user;
     notifyListeners();
   }
+
+  /// Recorta sin partir un emoji por la mitad.
+  String _clip(String text, int max) => String.fromCharCodes(text.trim().runes.take(max));
 
   String _emailFor(String username) {
     final u = username.trim().toLowerCase();
@@ -249,17 +265,31 @@ class ApiService extends ChangeNotifier {
   /// Reserva un id; la conversación se guarda al recibir la primera respuesta.
   Conversation newConversation() => Conversation(id: _conversations().doc().id, title: 'Nueva conversación');
 
+  /// Borra una conversación y sus mensajes. Las favoritas no se pueden borrar.
   Future<void> deleteConversation(String id) async {
     final ref = _conversations().doc(id);
+    if ((await ref.get()).data()?['favorite'] == true) {
+      throw ApiException('Quítala de favoritos para poder borrarla.');
+    }
+    await _deleteConversationData(ref);
+  }
+
+  /// Borra todas las conversaciones menos las favoritas.
+  Future<void> deleteAllConversations() async {
+    for (final conv in (await _conversations().get()).docs) {
+      if (conv.data()['favorite'] != true) await _deleteConversationData(conv.reference);
+    }
+  }
+
+  Future<void> _deleteConversationData(DocumentReference<Map<String, dynamic>> ref) async {
     await _deleteDocs(await ref.collection('messages').get());
     await ref.delete();
   }
 
-  Future<void> deleteAllConversations() async {
-    for (final conv in (await _conversations().get()).docs) {
-      await deleteConversation(conv.id);
-    }
-  }
+  Future<void> setFavorite(String id, bool favorite) => _conversations().doc(id).update({'favorite': favorite});
+
+  Future<void> renameConversation(String id, String title) =>
+      _conversations().doc(id).update({'title': title.trim()});
 
   Future<List<ChatMessage>> getMessages(String conversationId) async {
     final snap = await _conversations().doc(conversationId).collection('messages').orderBy('createdAt').get();
@@ -357,8 +387,9 @@ class ApiService extends ChangeNotifier {
     batch
       ..set(messages.doc(answerMsg.id), answerMsg.toMap())
       ..set(conv, {
-        if (isFirst) 'title': _makeTitle(question.content),
-        if (isFirst) 'createdAt': now,
+        // Al regenerar no se pisa el título, que la persona pudo haber cambiado
+        if (isFirst && saveQuestion) 'title': _makeTitle(question.content),
+        if (isFirst && saveQuestion) 'createdAt': now,
         'updatedAt': now,
       }, SetOptions(merge: true));
     await batch.commit();
